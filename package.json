@@ -1,0 +1,12 @@
+{
+  "name": "war-of-kingdom-online",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Positive vs Negative: War of Kingdoms. Game kartu 2 pemain online untuk Vercel.",
+  "scripts": {
+    "dev": "node dev-server.js",
+    "test": "node test/api.test.js && node test/redis-rest.test.js",
+    "test:e2e": "python3 test/e2e.py"
+  },
+  "engines": { "node": ">=20" }
+}
