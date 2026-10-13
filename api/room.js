@@ -36,7 +36,7 @@ function phaseOf(room) {
   return g.battleHistory.length >= g.currentRound ? 'resolved' : 'select';
 }
 function startGame(room, now) {
-  room.game = core.newState(room.seats.pos.name, room.seats.neg.name, room.cfg.initialArmy);
+  room.game = core.newState(room.seats.pos.name, room.seats.neg.name, room.cfg.initialArmy, room.cfg.buffChance);
   room.status = 'playing';
   room.roundStartedAt = now; room.resolvedAt = null; room.readyAt = null;
   room.ready = { pos: false, neg: false }; room.rematch = { pos: false, neg: false };
@@ -91,6 +91,7 @@ function viewFor(room, side, now, oppOnline) {
     g.selectedPositiveCard = side === 'pos' ? room.game.selectedPositiveCard : null;
     g.selectedNegativeCard = side === 'neg' ? room.game.selectedNegativeCard : null;
     delete g.gamePhase; delete g.currentTurn; delete g.isResolvingBattle;
+    delete g.buffPlan;   // rencana buff ronde mendatang bersifat rahasia
   }
   const phase = phaseOf(room);
   return {
