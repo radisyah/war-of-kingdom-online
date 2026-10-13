@@ -7,6 +7,9 @@
 'use strict';
 const MAX_ROUNDS = 30;
 const FIRST_BUFF_ROUND = 11, FIRST_BUFF_BONUS = 50;   // peluang buff di ronde 11 = peluang normal + 50% (maks 100%)
+// Bobot peluang tiap buff (dipakai untuk buff "tambahan" di luar yang dijamin muncul).
+const BUFF_WEIGHTS = [['curse', 30], ['blessing', 15], ['double', 9], ['weaken', 8], ['shield', 8], ['mirror', 6], ['chaos', 6], ['seal', 3]];
+const BUFF_TYPES = BUFF_WEIGHTS.map(w => w[0]);
 const BUFF_ICONS = { curse: '☠️', blessing: '✨', double: '⚡', weaken: '🔻', shield: '🛡️', mirror: '🔄', chaos: '🌀', seal: '🔱' };
 const range = (a, b) => Array.from({ length: b - a + 1 }, (_, i) => a + i);
 const fmt = v => (v < 0 ? '−' : '+') + Math.abs(v);
@@ -38,9 +41,10 @@ function scenarioFor(round) {
   if (round >= 30) return FINALE;
   return SCENARIOS[((round - 1) * 5 + 2) % SCENARIOS.length];
 }
-function newState(p1, p2, initial) {
+function newState(p1, p2, initial, chance) {
   const a = initial == null ? 0 : initial;
   return {
+    buffPlan: planBuffs(chance == null ? 35 : chance, MAX_ROUNDS),   // RAHASIA server: jangan dikirim ke klien
     currentRound: 1, maxRounds: MAX_ROUNDS,
     player1Name: p1, player2Name: p2,
     positiveCards: range(1, 30), negativeCards: range(1, 30).map(v => -v),
@@ -76,7 +80,8 @@ function drawLottery(buff, rng) {
   }
   return buff;
 }
-function makeBuff(type, rng) {
+function makeBuff(type, rng, opts) {
+  opts = opts || {};
   const pick = a => a[Math.floor(rng() * a.length)];
   const rnd = (a, b) => a + Math.floor(rng() * (b - a + 1));
   const side = t => t === 'positive' ? 'Positif' : 'Negatif';
@@ -84,7 +89,7 @@ function makeBuff(type, rng) {
   switch (type) {
     case 'curse': b.name = 'NEGATIVE CURSE'; b.desc = lotteryDesc(b); break;
     case 'blessing': b.name = 'POSITIVE BLESSING'; b.desc = lotteryDesc(b); break;
-    case 'double': b.name = 'DOUBLE POWER'; b.target = pick(['positive', 'negative']); b.desc = 'Kekuatan efektif kartu ' + side(b.target) + ' digandakan (×2).'; break;
+    case 'double': b.name = 'DOUBLE POWER'; b.target = opts.target || pick(['positive', 'negative']); b.desc = 'Kekuatan efektif kartu ' + side(b.target) + ' digandakan (×2).'; break;
     case 'weaken': b.name = 'WEAKENING'; b.target = pick(['positive', 'negative']); b.value = rnd(2, 6); b.desc = 'Kekuatan efektif kartu ' + side(b.target) + ' dikurangi ' + b.value + '.'; break;
     case 'shield': b.name = 'KINGDOM SHIELD'; b.owner = pick(['positive', 'negative']); b.value = rnd(3, 7); b.desc = 'Perisai ' + KNAME[b.owner] + ': kekuatan kartu lawan dikurangi ' + b.value + '.'; break;
     case 'mirror': b.name = 'MIRROR CURSE'; b.desc = 'Tanda kedua kartu dibalik: Positif menjadi Negatif dan Negatif menjadi Positif.'; break;
@@ -107,11 +112,47 @@ function generateBuff(round, chance, rng) {
   if (round <= 10) return null;                 // tidak ada buff pada ronde 1–10
   if (round === FIRST_BUFF_ROUND && chance > 0) chance = Math.min(100, chance + FIRST_BUFF_BONUS); // ronde 11 lebih berpeluang
   if (rng() * 100 >= chance) return null;
-  const pool = [['curse', 30], ['blessing', 30], ['double', 9], ['weaken', 8], ['shield', 8], ['mirror', 6], ['chaos', 6], ['seal', 3]];   // curse + blessing = 60% dari semua buff
+  return makeBuff(weightedType(BUFF_WEIGHTS, rng), rng);
+}
+function weightedType(pool, rng) {
   const total = pool.reduce((s, p) => s + p[1], 0);
   let r = rng() * total, type = pool[0][0];
   for (const [t, w] of pool) { if (r < w) { type = t; break; } r -= w; }
-  return makeBuff(type, rng);
+  return type;
+}
+function shuffle(a, rng) {
+  a = a.slice();
+  for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(rng() * (i + 1)); const t = a[i]; a[i] = a[j]; a[j] = t; }
+  return a;
+}
+/* Rencana buff satu game (dibuat sekali di awal, disimpan di server):
+   - Buff hanya di 20 ronde terakhir (ronde 11–30). Tiap ronde punya peluang `chance`; ronde 11 +50%.
+   - SEMUA 8 jenis buff dijamin muncul minimal sekali. Bila undian peluang menghasilkan kurang dari
+     jumlah yang dibutuhkan, ronde buff ditambah secara acak sampai cukup.
+   - DOUBLE POWER dijamin muncul tepat 2 kali: sekali untuk Kerajaan Positif dan sekali untuk Kerajaan Negatif.
+   - Buff selebihnya (bila ada) diambil menurut BUFF_WEIGHTS, tanpa DOUBLE POWER, agar rasionya tetap 1:1.
+   - chance = 0 berarti tanpa buff sama sekali.
+   Mengembalikan array panjang `maxRounds`; indeks r-1 = buff ronde r (atau null). */
+function planBuffs(chance, maxRounds, rng) {
+  maxRounds = maxRounds || MAX_ROUNDS; rng = rng || Math.random;
+  const plan = new Array(maxRounds).fill(null);
+  if (!(chance > 0)) return plan;
+  const window = range(FIRST_BUFF_ROUND, maxRounds);
+  const required = BUFF_TYPES.concat(['double']);            // 8 jenis + 1 double kedua (kerajaan sebaliknya)
+  let rounds = window.filter(r => rng() * 100 < (r === FIRST_BUFF_ROUND ? Math.min(100, chance + FIRST_BUFF_BONUS) : chance));
+  if (rounds.length < required.length) {
+    const rest = shuffle(window.filter(r => !rounds.includes(r)), rng);
+    rounds = rounds.concat(rest.slice(0, required.length - rounds.length)).sort((a, b) => a - b);
+  }
+  const extraPool = BUFF_WEIGHTS.filter(w => w[0] !== 'double');
+  const extras = Array.from({ length: rounds.length - required.length }, () => weightedType(extraPool, rng));
+  const types = shuffle(required.concat(extras), rng);
+  const doubleTargets = shuffle(['positive', 'negative'], rng);
+  rounds.forEach((r, i) => {
+    const t = types[i];
+    plan[r - 1] = makeBuff(t, rng, t === 'double' ? { target: doubleTargets.shift() } : null);
+  });
+  return plan;
 }
 function applyBuff(pv, nv, buff) {
   const p = { sign: 1, power: Math.abs(pv) }, n = { sign: -1, power: Math.abs(nv) };
@@ -207,7 +248,10 @@ function advanceRound(st, chance) {
   if (st.battleHistory.length < st.currentRound) return null;
   if (st.currentRound >= st.maxRounds) { st.gameStatus = 'finished'; st.gamePhase = 'final'; st.currentBuff = null; return false; }
   st.currentRound++;
-  const b = generateBuff(st.currentRound, chance == null ? 35 : chance);
+  // game baru memakai rencana buff (st.buffPlan); room lama tanpa rencana memakai undian per ronde
+  const planned = Array.isArray(st.buffPlan) ? st.buffPlan[st.currentRound - 1] : undefined;
+  const b = Array.isArray(st.buffPlan) ? (planned ? JSON.parse(JSON.stringify(planned)) : null)
+    : generateBuff(st.currentRound, chance == null ? 35 : chance);
   st.currentBuff = b; st.buffHistory[st.currentRound - 1] = b;
   st.gamePhase = 'ready1'; st.currentTurn = 1;
   return true;
@@ -234,5 +278,5 @@ function summarize(st) {
     winner: st.positiveArmy > st.negativeArmy ? 'positive' : st.negativeArmy > st.positiveArmy ? 'negative' : 'draw'
   };
 }
-return { MAX_ROUNDS, FIRST_BUFF_ROUND, BUFF_ICONS, range, fmt, fmtE, tierOf, tierName, pickRand, KNAME, SCENARIOS, OPENING, FINALE, scenarioFor, newState, availableCards, lotteryDesc, drawLottery, makeBuff, generateBuff, applyBuff, calculateBattle, updateArmy, explainEntry, resolveBattle, advanceRound, verifyState, summarize };
+return { MAX_ROUNDS, FIRST_BUFF_ROUND, BUFF_WEIGHTS, BUFF_TYPES, BUFF_ICONS, range, fmt, fmtE, tierOf, tierName, pickRand, KNAME, SCENARIOS, OPENING, FINALE, scenarioFor, newState, availableCards, lotteryDesc, drawLottery, makeBuff, generateBuff, planBuffs, applyBuff, calculateBattle, updateArmy, explainEntry, resolveBattle, advanceRound, verifyState, summarize };
 });
