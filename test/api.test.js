@@ -132,5 +132,54 @@ const pick = (view, side) => { const g = view.g, a = (side === 'pos' ? g.positiv
     assert(r.view.cfg.buffChance === 100 && r.view.cfg.initialArmy === 0 && r.view.cfg.timer === 15 && r.view.names.pos === 'bx/b');
     assert.strictEqual((await post('nope', {})).http, 400);
   });
+  await T('rencana buff: semua 8 jenis muncul di ronde 11–30, rentang chance 1–100', async () => {
+    for (const chance of [1, 10, 35, 70, 100]) for (let i = 0; i < 1500; i++) {
+      const plan = core.planBuffs(chance, 30);
+      assert.strictEqual(plan.length, 30);
+      for (let r = 1; r <= 10; r++) assert.strictEqual(plan[r - 1], null, 'buff muncul sebelum ronde 11');
+      const types = new Set(plan.filter(Boolean).map(b => b.type));
+      assert.strictEqual(types.size, 8, 'ada jenis buff yang tidak muncul (chance ' + chance + '): ' + [...types]);
+      assert(plan.filter(Boolean).length >= 9);
+    }
+  });
+  await T('rencana buff: chance 0 = tanpa buff sama sekali', async () => {
+    for (let i = 0; i < 200; i++) assert(core.planBuffs(0, 30).every(b => b === null));
+  });
+  await T('double power: tepat 2 kali, sekali Positif sekali Negatif (rasio 1:1)', async () => {
+    for (const chance of [5, 35, 100]) for (let i = 0; i < 1500; i++) {
+      const d = core.planBuffs(chance, 30).filter(b => b && b.type === 'double');
+      assert.strictEqual(d.length, 2);
+      assert.deepStrictEqual(d.map(b => b.target).sort(), ['negative', 'positive']);
+    }
+  });
+  await T('bobot: blessing lebih kecil dari curse dan buff tambahan benar-benar lebih jarang', async () => {
+    const w = Object.fromEntries(core.BUFF_WEIGHTS);
+    assert(w.blessing < w.curse && w.blessing < 30, 'bobot blessing belum dikurangi');
+    let curse = 0, blessing = 0;
+    for (let i = 0; i < 3000; i++) core.planBuffs(100, 30).forEach(b => { if (b && b.type === 'curse') curse++; if (b && b.type === 'blessing') blessing++; });
+    assert(blessing < curse * 0.85, 'blessing ' + blessing + ' vs curse ' + curse);
+  });
+  await T('room lama tanpa buffPlan tetap jalan (fallback undian per ronde)', async () => {
+    const st = core.newState('a', 'b', 0, 100); delete st.buffPlan;
+    st.currentRound = 10; st.battleHistory = new Array(10).fill({});
+    assert.strictEqual(core.advanceRound(st, 100), true);
+    assert.strictEqual(st.currentRound, 11); assert(st.currentBuff && st.currentBuff.type);
+  });
+  await T('API: satu game penuh chance 35 → 8 jenis buff muncul, double 1:1, rencana tidak bocor', async () => {
+    const r = await post('create', { name: 'P', cfg: { buffChance: 35 } }); const j = await post('join', { code: r.code, name: 'Q' });
+    for (let round = 1; round <= 30; round++) {
+      const v = (await state(r.code, r.token)).view;
+      assert(!('buffPlan' in v.g), 'buffPlan bocor ke klien');
+      assert(!('buffPlan' in (await state(r.code, j.token)).view.g), 'buffPlan bocor ke klien 2');
+      if (round <= 10) assert.strictEqual(v.g.currentBuff, null);
+      await post('lock', { code: r.code, token: r.token, card: pick(v, 'pos') }); await post('lock', { code: r.code, token: j.token, card: pick(v, 'neg') });
+      await post('ready', { code: r.code, token: r.token }); await post('ready', { code: r.code, token: j.token });
+    }
+    const fin = (await state(r.code, r.token)).view;
+    assert.strictEqual(fin.phase, 'final'); assert(!('buffPlan' in fin.g));
+    const bs = fin.g.battleHistory.map(e => e.buff).filter(Boolean);
+    assert.strictEqual(new Set(bs.map(b => b.type)).size, 8, 'tidak semua jenis buff muncul');
+    const d = bs.filter(b => b.type === 'double'); assert(d.length === 2 && d[0].target !== d[1].target);
+  });
   srv.close(); console.log('\n' + pass + ' tes lulus' + (process.exitCode ? ' — ADA YANG GAGAL' : '')); 
 })();
