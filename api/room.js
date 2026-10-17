@@ -84,10 +84,13 @@ function tick(room, now) {
   return true;
 }
 
-function viewFor(room, side, now, oppOnline) {
+/* pres: boolean (semua online/offline) atau { pos, neg, master }. */
+function viewFor(room, side, now, pres) {
+  if (typeof pres !== 'object' || pres === null) pres = { pos: !!pres, neg: !!pres, master: !!pres };
+  const oppOnline = side === 'master' ? !!(pres.pos && pres.neg) : !!pres[oppOf(side)];
   const g = JSON.parse(JSON.stringify(room.game || {}));
   if (room.game) {
-    // pilihan yang belum terbuka TIDAK pernah dikirim ke lawan
+    // pilihan yang belum terbuka TIDAK pernah dikirim ke lawan, juga tidak ke Room Master (penonton)
     g.selectedPositiveCard = side === 'pos' ? room.game.selectedPositiveCard : null;
     g.selectedNegativeCard = side === 'neg' ? room.game.selectedNegativeCard : null;
     delete g.gamePhase; delete g.currentTurn; delete g.isResolvingBattle;
@@ -97,8 +100,10 @@ function viewFor(room, side, now, oppOnline) {
   return {
     code: room.code, v: room.v, side, status: room.status, phase, gameNo: room.gameNo || 0,
     cfg: room.cfg, serverNow: now,
-    names: { pos: room.seats.pos.name, neg: room.seats.neg ? room.seats.neg.name : null },
-    oppOnline: !!oppOnline, leftBy: room.leftBy || null,
+    names: { pos: room.seats.pos ? room.seats.pos.name : null, neg: room.seats.neg ? room.seats.neg.name : null },
+    hasMaster: !!room.seats.master, masterName: room.seats.master ? room.seats.master.name : null,
+    online: { pos: !!pres.pos, neg: !!pres.neg, master: !!pres.master },
+    oppOnline, leftBy: room.leftBy || null,
     deadline: phase === 'select' && room.cfg.timer > 0 ? room.roundStartedAt + room.cfg.timer * 1000 : null,
     autoPicked: room.autoPicked || 0,
     ready: room.ready, rematch: room.rematch,
@@ -129,8 +134,14 @@ function seatOf(room, token) {
   if (!token) throw fail(401, 'Sesi tidak valid.');
   if (room.seats.pos && room.seats.pos.token === token) return 'pos';
   if (room.seats.neg && room.seats.neg.token === token) return 'neg';
+  if (room.seats.master && room.seats.master.token === token) return 'master';
   throw fail(401, 'Sesi tidak valid. Gabung ulang ke ruangan.');
 }
+const playerSeat = (room, token) => {
+  const side = seatOf(room, token);
+  if (side === 'master') throw fail(403, 'Room Master hanya bisa menonton.');
+  return side;
+};
 const normCode = c => { c = String(c || '').toUpperCase().replace(/[^A-Z0-9]/g, ''); if (c.length !== 5) throw fail(400, 'Kode ruangan harus 5 karakter.'); return c; };
 
 /* ---------- aksi ---------- */
@@ -139,9 +150,14 @@ async function actCreate(b) {
   const store = getStore(), now = Date.now(), token = rid(12);
   for (let i = 0; i < 12; i++) {
     let code = ''; for (let k = 0; k < 5; k++) code += ALPHABET[crypto.randomInt(ALPHABET.length)];
-    const room = { code, v: 1, createdAt: now, cfg: parseCfg(b.cfg), seats: { pos: { token, name }, neg: null }, status: 'lobby', game: null, gameNo: 0, ready: { pos: false, neg: false }, rematch: { pos: false, neg: false } };
+    const asMaster = b.role === 'master';
+    const seats = asMaster ? { pos: null, neg: null, master: { token, name } } : { pos: { token, name }, neg: null };
+    const room = { code, v: 1, createdAt: now, cfg: parseCfg(b.cfg), seats, status: 'lobby', game: null, gameNo: 0, ready: { pos: false, neg: false }, rematch: { pos: false, neg: false } };
     const ok = await store.cmd(['SET', roomKey(code), JSON.stringify(room), 'NX', 'EX', TTL]);
-    if (ok === 'OK') return { code, token, side: 'pos', view: viewFor(room, 'pos', now, false) };
+    if (ok === 'OK') {
+      const mySide = asMaster ? 'master' : 'pos';
+      return { code, token, side: mySide, view: viewFor(room, mySide, now, false) };
+    }
   }
   throw fail(503, 'Gagal membuat ruangan. Coba lagi.');
 }
@@ -152,18 +168,20 @@ async function actJoin(b) {
       try { const side = seatOf(room, b.token); return { code, token: b.token, side, view: viewFor(room, side, now, true) }; } catch (e) { /* lanjut sebagai pemain baru */ }
     }
     if (room.status === 'abandoned') throw fail(409, 'Ruangan ini sudah ditutup.');
-    if (room.seats.neg) throw fail(409, 'Ruangan sudah penuh.');
+    if (room.seats.pos && room.seats.neg) throw fail(409, 'Ruangan sudah penuh.');
     const name = cleanName(b.name); if (!name) throw fail(400, 'Isi nama terlebih dahulu.');
     const token = rid(12);
-    room.seats.neg = { token, name };
-    startGame(room, now);
-    return { code, token, side: 'neg', view: viewFor(room, 'neg', now, true) };
+    // ruangan dengan Room Master: pemain pertama = Positif, kedua = Negatif
+    const side = room.seats.pos ? 'neg' : 'pos';
+    room.seats[side] = { token, name };
+    if (room.seats.pos && room.seats.neg) startGame(room, now);
+    return { code, token, side, view: viewFor(room, side, now, true) };
   });
 }
 async function actLock(b) {
   const code = normCode(b.code), now = Date.now();
   return withRoom(code, room => {
-    const side = seatOf(room, b.token), g = room.game;
+    const side = playerSeat(room, b.token), g = room.game;
     if (phaseOf(room) !== 'select') throw fail(409, 'Belum waktunya memilih kartu.');
     if (side === 'pos' ? g.p1Locked : g.p2Locked) throw fail(409, 'Pilihanmu sudah terkunci.');
     const card = Number(b.card), pool = side === 'pos' ? g.positiveCards : g.negativeCards, used = side === 'pos' ? g.usedPositiveCards : g.usedNegativeCards;
@@ -176,7 +194,7 @@ async function actLock(b) {
 async function actReady(b) {
   const code = normCode(b.code), now = Date.now();
   return withRoom(code, room => {
-    const side = seatOf(room, b.token);
+    const side = playerSeat(room, b.token);
     if (phaseOf(room) !== 'resolved') throw fail(409, 'Ronde belum selesai.');
     if (!room.ready[side]) { room.ready[side] = true; if (!room.readyAt) room.readyAt = now; }
     if (room.ready.pos && room.ready.neg) advance(room, now);
@@ -186,7 +204,7 @@ async function actReady(b) {
 async function actRematch(b) {
   const code = normCode(b.code), now = Date.now();
   return withRoom(code, room => {
-    const side = seatOf(room, b.token);
+    const side = playerSeat(room, b.token);
     if (phaseOf(room) !== 'final') throw fail(409, 'Permainan belum selesai.');
     if (room.leftBy) throw fail(409, 'Lawan sudah meninggalkan ruangan.');
     room.rematch[side] = true;
@@ -198,7 +216,10 @@ async function actLeave(b) {
   const code = normCode(b.code), now = Date.now();
   return withRoom(code, room => {
     const side = seatOf(room, b.token);
-    if (phaseOf(room) === 'final') room.leftBy = side;           // hasil akhir tetap bisa dilihat lawan
+    if (side === 'master') {          // Room Master pemilik ruangan: keluar = ruangan ditutup (hasil akhir tetap bisa dilihat pemain)
+      if (phaseOf(room) !== 'final') { room.status = 'abandoned'; room.leftBy = 'master'; }
+    } else if (room.seats.master && room.status === 'lobby') room.seats[side] = null;   // keluar dari lobi: kursi dikosongkan
+    else if (phaseOf(room) === 'final') room.leftBy = side;           // hasil akhir tetap bisa dilihat lawan
     else { room.status = 'abandoned'; room.leftBy = side; }
     return { view: viewFor(room, side, now, false) };
   });
@@ -206,18 +227,20 @@ async function actLeave(b) {
 /* Polling: satu round-trip ke Redis (GET room + tanda hadir + cek lawan). Menulis hanya bila ada tenggat yang lewat. */
 async function actState(q) {
   const code = normCode(q.code), token = String(q.token || ''), have = Number(q.v) || 0, now = Date.now(), store = getStore();
-  const first = await store.pipeline([['GET', roomKey(code)], ['EXISTS', presKey(code, 'pos')], ['EXISTS', presKey(code, 'neg')]]);
+  const first = await store.pipeline([['GET', roomKey(code)], ['EXISTS', presKey(code, 'pos')], ['EXISTS', presKey(code, 'neg')], ['EXISTS', presKey(code, 'master')]]);
   if (!first[0]) throw fail(404, 'Ruangan tidak ditemukan atau sudah kedaluwarsa.');
   let room = JSON.parse(first[0]);
   const side = seatOf(room, token);
   await store.cmd(['SET', presKey(code, side), '1', 'EX', PRES_TTL]);
-  const oppOnline = !!first[side === 'pos' ? 2 : 1];
+  const pres = { pos: !!first[1], neg: !!first[2], master: !!first[3] };
+  pres[side] = true;
+  const oppOnline = side === 'master' ? pres.pos && pres.neg : pres[oppOf(side)];
   if (room.status === 'playing' && needsTick(room, now)) {
     await withRoom(code, r => { tick(r, now); });
     room = JSON.parse(await store.cmd(['GET', roomKey(code)]));
   }
-  if (room.v === have) return { unchanged: true, v: room.v, oppOnline, serverNow: now };
-  return { view: viewFor(room, side, now, oppOnline) };
+  if (room.v === have) return { unchanged: true, v: room.v, oppOnline, online: pres, serverNow: now };
+  return { view: viewFor(room, side, now, pres) };
 }
 
 /* ---------- handler HTTP (Vercel) ---------- */
