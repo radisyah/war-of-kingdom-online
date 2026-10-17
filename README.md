@@ -16,6 +16,11 @@ Browser B ─┘                         └─ public/game-core.js (aturan, dip
   (`GET /api/room?v=<versi>`; bila tidak ada perubahan server membalas sangat kecil). Latensi sekitar 1 detik.
 - State room disimpan di **Upstash Redis** (wajib di produksi: tiap request bisa dijalankan instance berbeda).
 - Pembuat ruangan = Kerajaan Positif (Pemain 1), yang gabung dengan kode = Kerajaan Negatif (Pemain 2).
+- **Room Master (opsional):** di menu, pilih peran *Room Master (hanya menonton)* saat membuat ruangan. Master mengatur
+  aturan ruangan, lalu dua pemain bergabung dengan kode (pemain pertama = Positif, kedua = Negatif). Master melihat skor,
+  status kunci, hasil ronde, dan status online kedua pemain, tetapi **tidak melihat kartu yang belum dibuka** dan tidak bisa
+  mengunci/melanjutkan/rematch (server menolak dengan 403). Master keluar = ruangan ditutup (kecuali sudah di hasil akhir).
+  Tanpa memilih peran ini, perilaku lama tetap berlaku (pembuat = Positif, 2 pemain).
 - Pembuat ruangan menentukan: peluang buff, pasukan awal, dan timer.
 
 ## Deploy ke Vercel
