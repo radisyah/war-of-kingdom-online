@@ -181,5 +181,41 @@ const pick = (view, side) => { const g = view.g, a = (side === 'pos' ? g.positiv
     assert.strictEqual(new Set(bs.map(b => b.type)).size, 8, 'tidak semua jenis buff muncul');
     const d = bs.filter(b => b.type === 'double'); assert(d.length === 2 && d[0].target !== d[1].target);
   });
+  await T('Room Master: hanya menonton, tidak melihat pilihan tertutup, tidak bisa beraksi', async () => {
+    const M = await post('create', { name: 'Master', role: 'master', cfg: { buffChance: 0, initialArmy: 0, timer: 0 } });
+    assert(M.ok && M.side === 'master' && M.view.status === 'lobby' && M.view.hasMaster);
+    const code = M.code;
+    const A = await post('join', { code, name: 'Ayu' }); assert(A.ok && A.side === 'pos' && A.view.status === 'lobby');
+    const mid = await state(code, M.token); assert.strictEqual(mid.view.names.pos, 'Ayu'); assert.strictEqual(mid.view.names.neg, null);
+    const B = await post('join', { code, name: 'Budi' }); assert(B.ok && B.side === 'neg' && B.view.status === 'playing');
+    assert.strictEqual((await post('join', { code, name: 'Cici' })).http, 409);
+    // master tidak bisa mengunci / siap / rematch
+    assert.strictEqual((await post('lock', { code, token: M.token, card: 1 })).http, 403);
+    assert.strictEqual((await post('ready', { code, token: M.token })).http, 403);
+    assert.strictEqual((await post('rematch', { code, token: M.token })).http, 403);
+    // pilihan tidak bocor ke master, tapi status kunci terlihat
+    await post('lock', { code, token: A.token, card: 9 });
+    const vm = await state(code, M.token);
+    assert.strictEqual(vm.view.side, 'master'); assert.strictEqual(vm.view.g.selectedPositiveCard, null);
+    assert.strictEqual(vm.view.g.selectedNegativeCard, null); assert(vm.view.g.p1Locked && !vm.view.g.p2Locked);
+    assert(!JSON.stringify(vm.view).includes('"selectedPositiveCard":9'));
+    assert(vm.view.online.master && vm.view.masterName === 'Master');
+    const r = await post('lock', { code, token: B.token, card: -4 });
+    const vm2 = await state(code, M.token); assert.strictEqual(vm2.view.phase, 'resolved');
+    assert.strictEqual(vm2.view.g.battleHistory[0].pCard, 9);   // setelah dibuka, hasil publik terlihat
+    // pemain melihat info master
+    const va = await state(code, A.token); assert(va.view.hasMaster && va.view.masterName === 'Master');
+    // sambung ulang master dengan token
+    const re = await post('join', { code, token: M.token, name: 'x' }); assert(re.ok && re.side === 'master');
+  });
+  await T('Room Master: pemain keluar dari lobi mengosongkan kursi; master keluar menutup ruangan', async () => {
+    const M = await post('create', { name: 'M', role: 'master' }); const A = await post('join', { code: M.code, name: 'A' });
+    await post('leave', { code: M.code, token: A.token });
+    const v = await state(M.code, M.token); assert.strictEqual(v.view.status, 'lobby'); assert.strictEqual(v.view.names.pos, null);
+    const A2 = await post('join', { code: M.code, name: 'A2' }); assert(A2.ok && A2.side === 'pos');
+    const B = await post('join', { code: M.code, name: 'B' }); assert.strictEqual(B.view.status, 'playing');
+    await post('leave', { code: M.code, token: M.token });
+    const va = await state(M.code, A2.token); assert.strictEqual(va.view.status, 'abandoned'); assert.strictEqual(va.view.leftBy, 'master');
+  });
   srv.close(); console.log('\n' + pass + ' tes lulus' + (process.exitCode ? ' — ADA YANG GAGAL' : '')); 
 })();
