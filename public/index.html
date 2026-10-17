@@ -1921,6 +1921,7 @@
         buffChance: 35,
         initialArmy: 0,
         timer: 60,
+        role: "player", // "player" (Pemain 1) atau "master" (Room Master, hanya menonton)
       };
 
       const DRAMA = [
@@ -3067,7 +3068,7 @@
           "<h3>Pertempuran</h3><ul><li>Kartu dengan kekuatan (nilai absolut) lebih besar menang.</li><li>Hanya <b>selisih</b> kekuatan yang masuk sebagai pasukan ke kerajaan pemenang. Contoh: +5 vs −6 → Negatif menang, sisa 1.</li><li>Kekuatan sama (misalnya +7 vs −7) → seri, kedua pasukan gugur.</li><li>Bila setelah buff kedua kartu bertanda sama (misalnya −8 dan −7), kekuatannya <b>dijumlahkan</b>: −15 → 15 pasukan untuk Kerajaan Negatif.</li></ul>" +
           "<h3>Buff (mulai ronde 11)</h3><p>Pada ronde 11–30 (20 ronde terakhir), buff muncul secara acak (peluang dapat diatur), tetapi <b>semua 8 jenis buff dijamin muncul minimal sekali</b> dalam satu pertandingan. <b>DOUBLE POWER</b> muncul tepat 2 kali: sekali untuk Kerajaan Positif dan sekali untuk Kerajaan Negatif, jadi adil untuk kedua pihak. Bila peluang buff diatur 0%, tidak ada buff sama sekali. Buff ditentukan di awal ronde dan terlihat oleh <b>kedua pemain</b> sebelum memilih kartu. Peluang buff di <b>ronde 11 dibuat lebih tinggi</b> agar permainan makin seru. NEGATIVE CURSE (kartu buff negatif) dan POSITIVE BLESSING (kartu buff positif) memakai <b>undian kerajaan yang baru dilakukan setelah kedua pemain memilih kartu</b> (saat kartu dibuka). <b>NEGATIVE CURSE</b>: jatuh ke Kerajaan Negatif → kartunya menjadi positif; jatuh ke Kerajaan Positif → kartunya menjadi negatif. <b>POSITIVE BLESSING</b>: jatuh ke Kerajaan Negatif → kartunya tetap negatif; jatuh ke Kerajaan Positif → kartunya tetap positif. Contoh Curse: +8 vs −7 dan undian jatuh ke Kerajaan Positif → −8 −7 = −15, yaitu 15 pasukan untuk Kerajaan Negatif. Saat terkena buff, kartu di arena berubah tampilannya sesuai nilai efektifnya. Buff lain: DOUBLE POWER, WEAKENING, KINGDOM SHIELD, MIRROR CURSE, CHAOS CARD, ABSOLUTE SEAL.</p>" +
           "<h3>Bluffing</h3><p>Riwayat kartu yang sudah terbuka bersifat publik. Baca pola lawan, pura-pura menyimpan kartu kuat, lalu jebak mereka. Game tidak memberi saran apa pun.</p>" +
-          "<h3>Suasana ala Werewolf</h3><p>Setiap ronde adalah satu <b>malam</b> dengan skenario naratif, bisikan untuk tiap pemain, dan pertanda buff. Skenario hanya narasi, tidak mengubah angka atau memberi petunjuk tentang kartu lawan. Ada musik latar, efek suara, dan timer berpikir opsional (diatur pembuat ruangan).</p><h3>Ruangan online</h3><p>Pembuat ruangan memegang Kerajaan Positif dan menentukan peluang buff, pasukan awal, dan timer. Pemain yang bergabung dengan kode memegang Kerajaan Negatif. Bila koneksimu terputus, muat ulang halaman: kamu otomatis kembali ke ruanganmu selama ruangan masih aktif.</p>"
+          "<h3>Suasana ala Werewolf</h3><p>Setiap ronde adalah satu <b>malam</b> dengan skenario naratif, bisikan untuk tiap pemain, dan pertanda buff. Skenario hanya narasi, tidak mengubah angka atau memberi petunjuk tentang kartu lawan. Ada musik latar, efek suara, dan timer berpikir opsional (diatur pembuat ruangan).</p><h3>Ruangan online</h3><p>Pembuat ruangan memegang Kerajaan Positif dan menentukan peluang buff, pasukan awal, dan timer. Pemain yang bergabung dengan kode memegang Kerajaan Negatif. <b>Room Master:</b> pembuat ruangan juga boleh memilih peran Room Master. Ia mengatur peluang buff, pasukan awal, dan timer, lalu hanya menonton: pemain pertama yang masuk memegang Kerajaan Positif dan yang kedua Kerajaan Negatif. Master melihat skor, status kunci, dan hasil tiap ronde, tetapi tidak melihat kartu yang belum dibuka dan tidak bisa mengambil aksi apa pun. Bila master keluar, ruangan ditutup. Bila koneksimu terputus, muat ulang halaman: kamu otomatis kembali ke ruanganmu selama ruangan masih aktif.</p>"
         );
       }
 
@@ -3238,8 +3239,14 @@
           connLost = false;
           if (j.unchanged) {
             clockOffset = j.serverNow - Date.now();
-            if (V && (V.oppOnline !== j.oppOnline || wasLost)) {
+            if (
+              V &&
+              (V.oppOnline !== j.oppOnline ||
+                wasLost ||
+                (j.online && JSON.stringify(V.online) !== JSON.stringify(j.online)))
+            ) {
               V.oppOnline = j.oppOnline;
+              if (j.online) V.online = j.online;
               if (!animating) renderGame();
             }
             return;
@@ -3265,6 +3272,7 @@
         if (animPhase) return animPhase;
         if (V.phase === "final") return "final";
         if (V.phase === "resolved") return "result";
+        if (isMaster()) return "waiting"; // Room Master hanya menonton, tidak pernah memilih kartu
         return myLocked() ? "waiting" : "select";
       }
       function stateForUI() {
@@ -3274,6 +3282,7 @@
           player2Name: V.names.neg,
         });
       }
+      const isMaster = () => !!ON && ON.side === "master";
       const oppSide = () => (ON.side === "pos" ? "neg" : "pos");
       const oppName = () => V.names[oppSide()] || "Lawan";
       const resKey = () => V.gameNo + ":" + V.g.battleHistory.length;
@@ -3512,7 +3521,9 @@
         if (!force && ph !== "lobby" && ph !== "final" && ph !== "abandoned") {
           showConfirm(
             "Keluar dari permainan?",
-            "Lawanmu akan diberi tahu bahwa kamu meninggalkan ruangan. Permainan tidak bisa dilanjutkan.",
+            isMaster()
+              ? "Sebagai Room Master, bila kamu keluar ruangan ditutup dan kedua pemain tidak bisa melanjutkan permainan."
+              : "Lawanmu akan diberi tahu bahwa kamu meninggalkan ruangan. Permainan tidak bisa dilanjutkan.",
             "Ya, Keluar",
             () => leaveRoom(true)
           );
@@ -3543,6 +3554,7 @@
         try {
           const j = await call("create", {
             name,
+            role: menuForm.role === "master" ? "master" : "player",
             cfg: {
               buffChance: menuForm.buffChance,
               initialArmy: menuForm.initialArmy,
@@ -3765,6 +3777,33 @@
       function actionsInner(st) {
         const ph = st.gamePhase,
           pos = ON.side === "pos";
+        if (isMaster()) {
+          if (ph === "waiting") {
+            const f = (l, n) => (l ? "🔒 " : "⌛ ") + esc(n || "-");
+            return (
+              '<div class="selinfo">👁 Pemain sedang memilih kartu: ' +
+              f(st.p1Locked, V.names.pos) +
+              " · " +
+              f(st.p2Locked, V.names.neg) +
+              '<span class="pulse">…</span></div>'
+            );
+          }
+          if (ph === "countdown" || ph === "reveal")
+            return '<button class="btn ghost small" onclick="skipAnimation()">Lewati animasi ⏩</button>';
+          if (ph === "result")
+            return (
+              '<div class="selinfo">👁 Menunggu pemain lanjut ke ronde berikutnya (' +
+              (V.ready.pos ? "✔" : "⌛") +
+              " " +
+              esc(V.names.pos) +
+              " · " +
+              (V.ready.neg ? "✔" : "⌛") +
+              " " +
+              esc(V.names.neg) +
+              ")</div>"
+            );
+          return "";
+        }
         if (ph === "select") {
           return (
             '<div class="selinfo">' +
@@ -3885,15 +3924,16 @@
       function pnameHTML(st, side) {
         const pos = side === "pos",
           nm = esc(pos ? st.player1Name : st.player2Name);
+        const on = V.online ? V.online[side] : V.oppOnline;
         const tag =
           side === ON.side
             ? " · <b>Kamu</b>"
             : ' · <span title="' +
-              (V.oppOnline ? "Online" : "Terputus") +
+              (on ? "Online" : "Terputus") +
               '"><i class="dot' +
-              (V.oppOnline ? "" : " off") +
+              (on ? "" : " off") +
               '"></i>' +
-              (V.oppOnline ? "online" : "terputus") +
+              (on ? "online" : "terputus") +
               "</span>";
         return (pos ? "Pemain 1" : "Pemain 2") + " · " + nm + tag;
       }
@@ -3918,9 +3958,11 @@
           '</div><div class="bar"><i style="width:' +
           prog +
           '%"></i></div><div class="status">' +
-          (STATUS[ph] || "") +
+          (isMaster() && ph === "waiting" ? "Pemain sedang memilih" : STATUS[ph] || "") +
           "</div></div>" +
-          '<div class="tools"><span class="roomchip" onclick="copyText(\'code\')" title="Salin kode ruangan">Ruangan <b>' +
+          '<div class="tools">' +
+          (isMaster() ? '<span class="roomchip" style="cursor:default">👁 Room Master</span>' : V.hasMaster ? '<span class="roomchip" style="cursor:default" title="Room Master menonton">👁 ' + esc(V.masterName || "") + (V.online.master ? "" : " (terputus)") + "</span>" : "") +
+          '<span class="roomchip" onclick="copyText(\'code\')" title="Salin kode ruangan">Ruangan <b>' +
           esc(V.code) +
           "</b></span>" +
           '<button class="btn ghost small" onclick="toggleSound()" title="Suara">' +
@@ -3933,11 +3975,18 @@
         if (connLost)
           h +=
             '<div class="netbar bad">⚠️ Koneksi bermasalah. Mencoba menyambung kembali…</div>';
-        else if (!V.oppOnline)
+        else if (isMaster()) {
+          const off = ["pos", "neg"].filter((k) => !V.online[k]);
+          if (off.length)
+            h +=
+              '<div class="netbar">🔴 ' +
+              off.map((k) => esc(V.names[k])).join(" & ") +
+              " terputus. Menunggu kembali…</div>";
+        } else if (!V.oppOnline)
           h +=
             '<div class="netbar">🔴 ' +
             esc(oppName()) +
-            " terputus. Menunggu dia kembali…</div>";
+            " terputus. Menunggu dia kembali…</div>";;
         h += selMode
           ? buffBarHTML(st)
           : st.currentBuff && ph === "countdown"
@@ -3948,9 +3997,11 @@
             scenarioHTML(st) +
             timerHTML() +
             '<div class="drama">' +
-            DRAMA[
-              (st.currentRound + (ON.side === "pos" ? 0 : 3)) % DRAMA.length
-            ] +
+            (isMaster()
+              ? "👁 Kamu Room Master: pilihan kartu baru terlihat setelah kedua pemain mengunci."
+              : DRAMA[
+                  (st.currentRound + (ON.side === "pos" ? 0 : 3)) % DRAMA.length
+                ]) +
             "</div>";
         h += arenaHTML(st);
         h +=
@@ -4019,7 +4070,11 @@
           esc(menuForm.name) +
           '" oninput="menuForm.name=this.value" style="width:100%;padding:.8em 1em;border-radius:11px;background:rgba(0,0,0,.4);color:#fff;border:1px solid var(--line);outline:none"></div>' +
           '<div class="err" id="menuErr"></div>' +
-          '<div class="mode-grid"><div class="mode"><h3>⚔ Buat Ruangan</h3><p style="font-size:.85rem;color:var(--mut);margin-bottom:6px">Kamu memimpin <b style="color:var(--gold)">Kerajaan Positif</b> (kartu +1 s.d. +30).</p>' +
+          '<div class="mode-grid"><div class="mode"><h3>⚔ Buat Ruangan</h3>' +
+          '<label>Peranmu</label><select id="roleSel" onchange="menuForm.role=this.value;renderGame()" style="width:100%;padding:.6em;border-radius:10px;background:rgba(0,0,0,.4);color:#fff;border:1px solid var(--line);margin-bottom:8px"><option value="player"' + (menuForm.role !== "master" ? " selected" : "") + '>Pemain 1 (Kerajaan Positif)</option><option value="master"' + (menuForm.role === "master" ? " selected" : "") + '>Room Master (hanya menonton)</option></select>' +
+          (menuForm.role === "master"
+            ? '<p style="font-size:.85rem;color:var(--mut);margin-bottom:6px">Kamu <b style="color:var(--gold)">Room Master</b>: mengatur ruangan dan menonton dua pemain bermain. Pemain yang masuk lebih dulu menjadi Kerajaan Positif, yang kedua Kerajaan Negatif.</p>'
+            : '<p style="font-size:.85rem;color:var(--mut);margin-bottom:6px">Kamu memimpin <b style="color:var(--gold)">Kerajaan Positif</b> (kartu +1 s.d. +30).</p>') +
           '<div class="cfg"><div><label>Buff %</label>' +
           num("buffChance", 0, 100) +
           "</div><div><label>Pasukan awal</label>" +
@@ -4028,7 +4083,7 @@
           num("timer", 0, 180) +
           "</div></div>" +
           '<p style="font-size:.72rem;color:var(--mut);margin:6px 0 10px">Timer 0 = tanpa batas. Bila habis, kartu dipilihkan otomatis.</p><button class="btn" style="width:100%" onclick="createRoom()">Buat Ruangan</button></div>' +
-          '<div class="mode"><h3>🚪 Gabung Ruangan</h3><p style="font-size:.85rem;color:var(--mut);margin-bottom:6px">Kamu memimpin <b style="color:#ff7f95">Kerajaan Negatif</b> (kartu −1 s.d. −30).</p>' +
+          '<div class="mode"><h3>🚪 Gabung Ruangan</h3><p style="font-size:.85rem;color:var(--mut);margin-bottom:6px">Masuk sebagai pemain. Di ruangan buatan pemain kamu memimpin <b style="color:#ff7f95">Kerajaan Negatif</b>; di ruangan Room Master, pemain pertama = Positif, kedua = Negatif.</p>' +
           '<label>Kode ruangan</label><input class="codein" id="codein" maxlength="5" placeholder="ABCDE" value="' +
           esc(menuForm.code) +
           '" oninput="menuForm.code=this.value.toUpperCase();this.value=menuForm.code" onkeydown="if(event.key===\'Enter\')joinRoom()">' +
@@ -4039,18 +4094,31 @@
       }
       function renderLobbyHTML() {
         const c = V.cfg;
+        const seat = (k, lbl) =>
+          "<div>" + lbl + ": <b>" + (V.names[k] ? esc(V.names[k]) : '<span style="color:var(--mut)">menunggu…</span>') + "</b></div>";
+        const seats = V.hasMaster
+          ? '<div class="note" style="text-align:left;margin:8px 0">' +
+            "<div>👁 Room Master: <b>" + esc(V.masterName || "") + "</b></div>" +
+            seat("pos", "⚔ Pemain 1 · Positif") + seat("neg", "🛡 Pemain 2 · Negatif") + "</div>"
+          : "";
         return (
           '<div class="menu"><div class="menu-card"><div class="emblem"><span>' +
           crestSVG("pos") +
           "</span><span>" +
           crestSVG("neg") +
           "</span></div>" +
-          '<h2 class="title">Ruangan Siap</h2><p class="tag">Bagikan kode ini kepada lawanmu. Permainan dimulai otomatis begitu dia bergabung.</p>' +
+          '<h2 class="title">Ruangan Siap</h2><p class="tag">' +
+          (V.hasMaster
+            ? isMaster()
+              ? "Bagikan kode ini kepada dua pemain. Permainan dimulai otomatis begitu keduanya bergabung dan kamu bisa menontonnya."
+              : "Menunggu pemain lain. Permainan dimulai otomatis begitu dua pemain hadir."
+            : "Bagikan kode ini kepada lawanmu. Permainan dimulai otomatis begitu dia bergabung.") +
+          "</p>" + seats +
           '<div class="lobby-code">' +
           esc(V.code) +
           "</div>" +
           '<div class="menu-actions"><div class="row"><button class="btn blue" onclick="copyText(\'code\')">📋 Salin Kode</button><button class="btn ghost" onclick="copyText(\'link\')">🔗 Salin Tautan</button></div></div>' +
-          '<p class="note"><span class="pulse">●</span> Menunggu lawan bergabung…</p>' +
+          '<p class="note"><span class="pulse">●</span> Menunggu ' + (V.hasMaster ? "pemain" : "lawan") + " bergabung…</p>" +
           '<p class="note">Aturan ruangan: peluang buff <b>' +
           c.buffChance +
           "%</b> · pasukan awal <b>" +
@@ -4058,13 +4126,15 @@
           "</b> · timer <b>" +
           (c.timer ? c.timer + " dtk" : "tanpa batas") +
           "</b></p>" +
-          '<div class="menu-actions" style="margin-top:14px"><button class="btn ghost" onclick="leaveRoom()">Batalkan Ruangan</button></div></div></div>'
+          '<div class="menu-actions" style="margin-top:14px"><button class="btn ghost" onclick="leaveRoom()">' + (V.hasMaster && !isMaster() ? "Keluar" : "Batalkan Ruangan") + "</button></div></div></div>"
         );
       }
       function renderAbandonedHTML() {
         const who =
-          V.leftBy && V.leftBy !== ON.side
-            ? esc(oppName()) + " meninggalkan permainan."
+          V.leftBy === "master" && !isMaster()
+            ? "Room Master menutup ruangan."
+            : V.leftBy && V.leftBy !== ON.side
+            ? esc(isMaster() ? V.names[V.leftBy] : oppName()) + " meninggalkan permainan."
             : "Ruangan ini sudah ditutup.";
         return (
           '<div class="menu"><div class="menu-card"><div class="big-ic" style="font-size:3rem">🏳️</div><h2 class="title">Permainan Berakhir</h2><p class="tag">' +
@@ -4074,6 +4144,8 @@
         );
       }
       function rematchBtn() {
+        if (isMaster())
+          return '<button class="btn big" disabled>👁 Menunggu pemain memutuskan main lagi' + (V.rematch.pos || V.rematch.neg ? " (" + (V.rematch.pos ? "✔" : "⌛") + " · " + (V.rematch.neg ? "✔" : "⌛") + ")" : "") + "</button>";
         const me = V.rematch[ON.side],
           opp = V.rematch[oppSide()];
         if (V.leftBy && V.leftBy !== ON.side)
