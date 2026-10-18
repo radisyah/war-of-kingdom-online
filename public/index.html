@@ -2,7 +2,28 @@
 <html lang="id">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover, interactive-widget=resizes-content"
+    />
+    <meta name="theme-color" content="#08070f" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta
+      name="apple-mobile-web-app-status-bar-style"
+      content="black-translucent"
+    />
+    <meta name="apple-mobile-web-app-title" content="War of Kingdoms" />
+    <meta name="format-detection" content="telephone=no" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="192x192"
+      href="/icons/icon-192.png"
+    />
+    <link rel="apple-touch-icon" href="/icons/icon-192.png" />
     <title>POSITIVE vs NEGATIVE: WAR OF KINGDOMS · Online</title>
     <style>
       :root {
@@ -45,6 +66,38 @@
         color: var(--ink);
         font-family: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
         min-height: 100vh;
+        min-height: 100dvh;
+        overscroll-behavior-y: contain; /* cegah tarik-untuk-muat-ulang yang tak sengaja di Android */
+        -webkit-tap-highlight-color: transparent;
+        -webkit-text-size-adjust: 100%;
+        text-size-adjust: 100%;
+        padding-left: env(safe-area-inset-left, 0px);
+        padding-right: env(safe-area-inset-right, 0px);
+      }
+      html {
+        background: #08070f;
+      }
+      /* sentuhan: tanpa seleksi teks / menu tekan-lama, tanpa tunda ketuk ganda */
+      body {
+        -webkit-user-select: none;
+        user-select: none;
+        -webkit-touch-callout: none;
+      }
+      input,
+      select,
+      textarea {
+        -webkit-user-select: text;
+        user-select: text;
+      }
+      button,
+      .btn,
+      .fbtn,
+      .card,
+      .roomchip,
+      summary,
+      select,
+      input {
+        touch-action: manipulation;
       }
       h1,
       h2,
@@ -115,6 +168,7 @@
       /* ===== MENU ===== */
       .menu {
         min-height: 100vh;
+        min-height: 100dvh;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -600,8 +654,11 @@
       .flip .front {
         transform: rotateY(180deg);
       }
+      .flip {
+        --fw: var(--cw); /* ukuran dari arena, dipakai kartu di sisi depan */
+      }
       .flip .front .card {
-        --cw: var(--cw);
+        --cw: var(--fw);
       }
       .back {
         display: flex;
@@ -1852,6 +1909,694 @@
           grid-template-columns: 1fr;
         }
       }
+
+      /* =====================================================================
+         MOBILE / ANDROID  — layar penuh, tata letak ala aplikasi, target sentuh besar
+         ===================================================================== */
+      .only-m,
+      .mscore {
+        display: none;
+      }
+      .fsbtn[hidden] {
+        display: none;
+      }
+      @media (hover: none) {
+        .btn:hover:not(:disabled),
+        .btn.ghost:hover:not(:disabled) {
+          transform: none;
+          filter: none;
+        }
+        .card.pickable:hover {
+          transform: none;
+        }
+        .btn:active:not(:disabled) {
+          transform: scale(0.97);
+          filter: brightness(1.08);
+        }
+        .card.pickable:active {
+          transform: scale(0.96);
+        }
+      }
+      @keyframes sheetUp {
+        from {
+          transform: translateY(40px);
+          opacity: 0;
+        }
+        to {
+          transform: none;
+          opacity: 1;
+        }
+      }
+      .sheet-list {
+        display: grid;
+        gap: 8px;
+        margin-top: 6px;
+      }
+      .sheet-list .btn {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        text-align: left;
+        min-height: 52px;
+        font-size: 1rem;
+      }
+      .sheet-list .btn .ic {
+        width: 1.6em;
+        text-align: center;
+        font-size: 1.25em;
+      }
+      .sheet-list .btn small {
+        display: block;
+        font-weight: 400;
+        color: var(--mut);
+        font-size: 0.72em;
+      }
+      .fs-hint {
+        margin-top: 12px;
+        padding: 10px 12px;
+        border-radius: 12px;
+        font-size: 0.84rem;
+        line-height: 1.5;
+        color: var(--gold2);
+        background: rgba(245, 196, 81, 0.1);
+        border: 1px solid rgba(245, 196, 81, 0.3);
+        text-align: left;
+      }
+      .rotate-hint {
+        display: none;
+      }
+
+      @media (max-width: 820px),
+        (max-height: 520px) and (orientation: landscape) and (pointer: coarse) {
+        input,
+        select,
+        textarea {
+          font-size: 16px !important; /* cegah Android/iOS memperbesar layar saat mengetik */
+        }
+        .btn {
+          min-height: 46px;
+        }
+        .btn.small {
+          min-height: 42px;
+          min-width: 42px;
+          padding: 0.45em 0.8em;
+        }
+        body {
+          background-attachment: scroll;
+        }
+
+        /* --- header satu baris + papan skor --- */
+        .only-m {
+          display: inline-flex;
+        }
+        .hide-m {
+          display: none !important;
+        }
+        .top {
+          flex-wrap: wrap;
+          row-gap: 6px;
+          padding: calc(6px + env(safe-area-inset-top, 0px))
+            calc(10px + env(safe-area-inset-right, 0px)) 8px
+            calc(10px + env(safe-area-inset-left, 0px));
+          margin-left: calc(-1 * env(safe-area-inset-left, 0px));
+          margin-right: calc(-1 * env(safe-area-inset-right, 0px));
+          background: #0a0812;
+          backdrop-filter: none;
+        }
+        .brand {
+          display: none;
+        }
+        .roundbox {
+          min-width: 0;
+          max-width: none;
+          text-align: left;
+          flex: 1;
+        }
+        .rnum {
+          font-size: 0.95rem;
+          white-space: nowrap;
+        }
+        .rnum b {
+          font-size: 1.2rem;
+        }
+        .bar {
+          margin: 3px 0 2px;
+        }
+        .status {
+          font-size: 0.72rem;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        .tools {
+          flex-wrap: nowrap;
+          gap: 6px;
+        }
+        .roomchip {
+          min-height: 42px;
+          padding: 0.4em 0.8em;
+        }
+        .mscore {
+          display: flex;
+          flex: 1 1 100%;
+          align-items: stretch;
+          gap: 6px;
+        }
+        .mscore .ms {
+          flex: 1;
+          min-width: 0;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 8px;
+          padding: 4px 10px;
+          border-radius: 12px;
+          border: 1px solid var(--line);
+          background: rgba(255, 255, 255, 0.04);
+        }
+        .mscore .ms.pos {
+          border-color: rgba(245, 196, 81, 0.45);
+          background: linear-gradient(
+            90deg,
+            rgba(74, 168, 255, 0.16),
+            transparent
+          );
+        }
+        .mscore .ms.neg {
+          border-color: rgba(211, 48, 74, 0.5);
+          flex-direction: row-reverse;
+          background: linear-gradient(
+            270deg,
+            rgba(154, 77, 255, 0.18),
+            transparent
+          );
+        }
+        .mscore .ms.mine {
+          box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.35);
+        }
+        .mscore .nm {
+          min-width: 0;
+          line-height: 1.15;
+          font-size: 0.72rem;
+          color: var(--mut);
+          overflow: hidden;
+        }
+        .mscore .ms.neg .nm {
+          text-align: right;
+        }
+        .mscore .nm b {
+          display: block;
+          font-size: 0.82rem;
+          color: var(--ink);
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        .mscore .sc {
+          font-family: Georgia, serif;
+          font-weight: 900;
+          font-size: 1.6rem;
+          line-height: 1;
+        }
+        .mscore .ms.pos .sc {
+          color: var(--gold2);
+        }
+        .mscore .ms.neg .sc {
+          color: #ff8da0;
+        }
+
+        /* --- tata letak: konten utama dulu, panel detail di bawah --- */
+        .layout {
+          grid-template-columns: 1fr 1fr;
+          padding: 8px 8px 0;
+          gap: 8px;
+        }
+        .center {
+          display: flex;
+          flex-direction: column;
+          grid-column: 1/-1;
+          order: -1;
+        }
+        .panel {
+          padding: 10px;
+          border-radius: 14px;
+        }
+        .panel .crest {
+          display: none;
+        }
+        .panel h2 {
+          font-size: 0.9rem;
+        }
+        .pname {
+          font-size: 0.74rem;
+        }
+        .army .num {
+          font-size: 1.8rem;
+        }
+        .stats {
+          font-size: 0.74rem;
+        }
+        .layout > .panel:last-child {
+          margin-bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+        }
+        .center > * {
+          order: 5;
+        }
+        .center > .netbar {
+          order: 1;
+        }
+        .center > .buffbar {
+          order: 2;
+        }
+        .center > .scenario {
+          order: 3;
+        }
+        .center > .timer {
+          order: 4;
+        }
+        .center > .arena {
+          order: 6;
+        }
+        .center > .calc {
+          order: 7;
+        }
+        .center > .dawn,
+        .center > .verdict {
+          order: 8;
+        }
+        .center > .collection,
+        .center > details.log,
+        .center > .logbox {
+          order: 20;
+        }
+        .center > .actions {
+          order: 30;
+        }
+        .drama {
+          display: none;
+        }
+        .buffbar {
+          padding: 8px 10px;
+          margin-bottom: 8px;
+          font-size: 0.8rem;
+        }
+        .buffbar .ic {
+          font-size: 1.3rem;
+        }
+
+        /* skenario ringkas (ketuk untuk membuka) */
+        .scenario {
+          padding: 10px 12px;
+          margin-bottom: 8px;
+          gap: 10px;
+          border-radius: 14px;
+        }
+        .scenario .sc-ic {
+          font-size: 1.7rem;
+        }
+        .sc-title {
+          font-size: 1rem;
+        }
+        .scenario p {
+          font-size: 0.82rem;
+          line-height: 1.4;
+        }
+        .scenario:not(.open) .sc-tx > p {
+          display: none;
+        }
+        .scenario:not(.open) .sc-tx > p:first-of-type {
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+        }
+        .scenario:not(.open) .sc-tx > p.tension {
+          display: block;
+        }
+        .scenario .sc-tx {
+          min-width: 0;
+          flex: 1;
+        }
+        .scenario::after {
+          content: "▾";
+          color: var(--mut);
+          align-self: center;
+          font-size: 0.9rem;
+        }
+        .scenario.open::after {
+          content: "▴";
+        }
+
+        /* timer menempel di bawah header agar selalu terlihat */
+        .timer {
+          position: sticky;
+          top: var(--hh, 0px);
+          z-index: 18;
+          margin: 0 0 8px;
+          padding: 6px 10px;
+          border-radius: 10px;
+          background: rgba(10, 8, 18, 0.95);
+          border: 1px solid var(--line);
+          font-size: 0.8rem;
+        }
+        .timer span {
+          min-width: 0;
+          white-space: nowrap;
+        }
+
+        /* arena: kartu menyesuaikan lebar layar */
+        .arena {
+          --cw: clamp(84px, calc((100vw - 120px) / 2), 150px);
+          padding: 14px 6px 10px;
+          gap: 8px;
+          border-radius: 16px;
+        }
+        .vsmark {
+          font-size: 1.15rem;
+        }
+        .slot-label {
+          font-size: 0.68rem;
+          max-width: calc(var(--cw) + 10px);
+        }
+        .eff {
+          font-size: 0.78rem;
+        }
+        .dmg {
+          font-size: 2.4rem;
+        }
+        .countdown {
+          font-size: 3.6rem;
+        }
+        .calc {
+          padding: 4px 12px;
+        }
+        .cl {
+          font-size: 0.84rem;
+        }
+        .verdict {
+          font-size: 1.1rem;
+        }
+
+        /* koleksi kartu: ikut gulir halaman (tanpa gulir bersarang) */
+        .collection {
+          padding: 10px 8px;
+          margin-top: 4px;
+          border-radius: 14px;
+        }
+        .coll-head {
+          font-size: 0.8rem;
+        }
+        .filters {
+          flex-wrap: nowrap;
+          overflow-x: auto;
+          margin: 0 -8px 8px;
+          padding: 0 8px 4px;
+          scrollbar-width: none;
+          -webkit-overflow-scrolling: touch;
+        }
+        .filters::-webkit-scrollbar {
+          display: none;
+        }
+        .fbtn {
+          flex: 0 0 auto;
+          white-space: nowrap;
+          min-height: 38px;
+          padding: 6px 14px;
+          font-size: 0.82rem;
+        }
+        .cardgrid {
+          --gw: clamp(66px, calc((100vw - 82px) / 4), 100px);
+          grid-template-columns: repeat(auto-fill, minmax(var(--gw), 1fr));
+          gap: 14px 8px;
+          max-height: none;
+          overflow: visible;
+          padding: 12px 2px 8px;
+        }
+        .cardgrid .card {
+          --cw: var(--gw);
+          font-size: calc(var(--gw) / 9);
+        }
+        .cardgrid .card .c-name,
+        .cardgrid .card .c-realm {
+          display: none;
+        }
+        .cardgrid .card .c-art {
+          margin: 0.15em 0;
+        }
+        .card.selected {
+          transform: translateY(-8px) scale(1.06);
+        }
+
+        /* tombol aksi menempel di bawah layar (zona jempol) */
+        .actions {
+          position: sticky;
+          bottom: 0;
+          z-index: 25;
+          flex-direction: row;
+          align-items: center;
+          justify-content: space-between;
+          gap: 10px;
+          margin: 8px -8px 0;
+          padding: 10px calc(12px + env(safe-area-inset-right, 0px))
+            calc(10px + env(safe-area-inset-bottom, 0px))
+            calc(12px + env(safe-area-inset-left, 0px));
+          background: linear-gradient(
+            to bottom,
+            rgba(8, 7, 15, 0) 0,
+            rgba(8, 7, 15, 0.98) 14px,
+            #08070f 100%
+          );
+          border-top: 1px solid rgba(255, 255, 255, 0.06);
+        }
+        .actions:empty {
+          display: none;
+        }
+        .actions .selinfo {
+          flex: 1;
+          font-size: 0.85rem;
+          line-height: 1.3;
+        }
+        .actions .btn.big {
+          font-size: 1rem;
+          padding: 0.8em 1.1em;
+          white-space: nowrap;
+        }
+        .actions > div[style] {
+          flex: 0 0 auto;
+        }
+        .actions > .btn.big:only-child {
+          flex: 1;
+        }
+
+        /* modal menjadi bottom-sheet */
+        .modal-bg {
+          align-items: flex-end;
+          padding: 0;
+        }
+        .modal {
+          width: 100%;
+          max-height: calc(100dvh - 24px);
+          border-radius: 22px 22px 0 0;
+          padding: 22px 16px calc(20px + env(safe-area-inset-bottom, 0px));
+          animation: sheetUp 0.25s ease-out;
+          overscroll-behavior: contain;
+        }
+        .modal::before {
+          content: "";
+          display: block;
+          width: 42px;
+          height: 4px;
+          border-radius: 4px;
+          background: rgba(255, 255, 255, 0.25);
+          margin: -10px auto 12px;
+        }
+        .modal .x {
+          width: 46px;
+          height: 46px;
+          right: 6px;
+          top: 6px;
+          font-size: 1.3rem;
+        }
+        .modal .mrow .btn {
+          flex: 1;
+        }
+        .tw {
+          max-height: 60dvh;
+        }
+        .setrow {
+          padding: 14px 0;
+        }
+        .setrow input[type="checkbox"] {
+          width: 26px;
+          height: 26px;
+          accent-color: var(--gold);
+          flex: 0 0 auto;
+        }
+        .setrow input[type="number"] {
+          min-height: 42px;
+        }
+        input[type="range"] {
+          width: 150px;
+          height: 32px;
+        }
+        .toast {
+          bottom: calc(86px + env(safe-area-inset-bottom, 0px));
+        }
+        .overlay {
+          padding: calc(20px + env(safe-area-inset-top, 0px)) 20px
+            calc(20px + env(safe-area-inset-bottom, 0px));
+        }
+
+        /* menu / lobi */
+        .menu {
+          align-items: flex-start;
+          padding: calc(12px + env(safe-area-inset-top, 0px)) 10px
+            calc(16px + env(safe-area-inset-bottom, 0px));
+        }
+        .menu-card {
+          padding: 18px 14px;
+          border-radius: 18px;
+          backdrop-filter: none;
+        }
+        .emblem {
+          gap: 14px;
+        }
+        .emblem svg {
+          width: 54px;
+          height: 54px;
+        }
+        .subtitle {
+          letter-spacing: 0.28em;
+          font-size: 0.7rem;
+          margin-bottom: 10px;
+        }
+        .tag {
+          font-size: 0.88rem;
+          margin-bottom: 14px;
+        }
+        .mode {
+          padding: 14px 12px;
+        }
+        .mode input,
+        .namebar input,
+        .mode select {
+          min-height: 48px;
+        }
+        .mode .cfg label {
+          font-size: 0.6rem;
+        }
+        .codein {
+          font-size: 1.5rem;
+        }
+        .menu-actions .btn,
+        .mode .btn {
+          min-height: 50px;
+        }
+        .note {
+          font-size: 0.72rem;
+        }
+        .final {
+          padding: calc(12px + env(safe-area-inset-top, 0px)) 10px
+            calc(40px + env(safe-area-inset-bottom, 0px));
+        }
+        .winner {
+          padding: 22px 12px;
+        }
+        .final .btn.big {
+          width: 100%;
+        }
+      }
+
+      /* layar sangat sempit (≤ 360px) */
+      @media (max-width: 380px) {
+        .mscore .sc {
+          font-size: 1.35rem;
+        }
+        .actions .selinfo {
+          font-size: 0.78rem;
+        }
+        .actions .btn.big {
+          padding: 0.8em 0.9em;
+          font-size: 0.92rem;
+        }
+        .mode .cfg {
+          gap: 6px;
+        }
+      }
+
+      /* HP landscape: ruang vertikal sempit → semua dipadatkan */
+      @media (max-height: 520px) and (orientation: landscape) and (pointer: coarse) {
+        .top {
+          flex-wrap: nowrap;
+          column-gap: 10px;
+          padding-top: calc(4px + env(safe-area-inset-top, 0px));
+          padding-bottom: 4px;
+        }
+        .mscore {
+          flex: 2;
+        }
+        .roundbox {
+          flex: 1.2;
+        }
+        .mscore .ms {
+          padding: 2px 8px;
+        }
+        .mscore .sc {
+          font-size: 1.3rem;
+        }
+        .scenario {
+          display: none;
+        }
+        .layout {
+          grid-template-columns: 1fr;
+          padding: 6px 8px 0;
+        }
+        .layout > .panel {
+          display: none;
+        }
+        .arena {
+          --cw: clamp(70px, 26vh, 110px);
+          padding: 8px 6px;
+        }
+        .slot {
+          gap: 4px;
+        }
+        .countdown {
+          font-size: 2.6rem;
+        }
+        .cardgrid {
+          --gw: clamp(60px, 24vh, 84px);
+          display: flex;
+          overflow-x: auto;
+          gap: 10px;
+          padding: 12px 4px 8px;
+          scroll-snap-type: x proximity;
+          -webkit-overflow-scrolling: touch;
+        }
+        .cardgrid .card {
+          flex: 0 0 auto;
+          scroll-snap-align: start;
+        }
+        .filters {
+          margin-bottom: 2px;
+        }
+        .actions {
+          padding-top: 6px;
+          padding-bottom: calc(6px + env(safe-area-inset-bottom, 0px));
+        }
+        .modal {
+          max-width: 640px;
+          margin: 0 auto;
+          max-height: calc(100dvh - 8px);
+        }
+        .menu-card {
+          width: min(640px, 100%);
+          margin: 0 auto;
+        }
+        .mode-grid {
+          grid-template-columns: 1fr 1fr;
+        }
+      }
     </style>
   </head>
   <body>
@@ -1891,6 +2636,8 @@
         music: true,
         volume: 70,
         narrator: false,
+        autoFullscreen: true, // HP: ketukan pertama otomatis masuk layar penuh
+        haptics: true, // getar ringan saat memilih / mengunci kartu
       };
 
       let settings = loadSettings();
@@ -2933,7 +3680,35 @@
           el.replaceWith(tmp.firstElementChild);
         });
         bumpSide = null;
+        const ms = document.querySelector(".mscore");
+        if (ms) {
+          const tmp = document.createElement("div");
+          tmp.innerHTML = mscoreHTML(st);
+          ms.replaceWith(tmp.firstElementChild);
+        }
         if (e.winner !== "draw") Sfx.tick();
+      }
+      /* papan skor ringkas di header (hanya tampil di layar HP) */
+      function mscoreHTML(st) {
+        st = panelState(st);
+        const cell = (side) => {
+          const pos = side === "pos",
+            nm = pos ? st.player1Name : st.player2Name;
+          return (
+            '<div class="ms ' +
+            side +
+            (ON && ON.side === side ? " mine" : "") +
+            '"><div class="nm">' +
+            (pos ? "Positif" : "Negatif") +
+            (ON && ON.side === side ? " · Kamu" : "") +
+            "<b>" +
+            esc(nm || "-") +
+            '</b></div><div class="sc">' +
+            (pos ? st.positiveArmy : st.negativeArmy) +
+            "</div></div>"
+          );
+        };
+        return '<div class="mscore">' + cell("pos") + cell("neg") + "</div>";
       }
       function panelHTML(st, side) {
         st = panelState(st);
@@ -3089,6 +3864,8 @@
         s.sound = !!s.sound;
         s.music = !!s.music;
         s.narrator = !!s.narrator;
+        s.autoFullscreen = s.autoFullscreen !== false;
+        s.haptics = s.haptics !== false;
         s.volume = Math.min(100, Math.max(0, Number(s.volume)));
         if (isNaN(s.volume)) s.volume = 70;
         return s;
@@ -3243,7 +4020,8 @@
               V &&
               (V.oppOnline !== j.oppOnline ||
                 wasLost ||
-                (j.online && JSON.stringify(V.online) !== JSON.stringify(j.online)))
+                (j.online &&
+                  JSON.stringify(V.online) !== JSON.stringify(j.online)))
             ) {
               V.oppOnline = j.oppOnline;
               if (j.online) V.online = j.online;
@@ -3420,7 +4198,7 @@
         const sc = scenarioFor(st.currentRound),
           ph = st.gamePhase;
         let h =
-          '<div class="scenario"><div class="sc-ic">' +
+          '<div class="scenario" onclick="this.classList.toggle(\'open\')"><div class="sc-ic">' +
           sc.icon +
           '</div><div class="sc-tx"><div class="sc-tag">MALAM KE-' +
           st.currentRound +
@@ -3455,6 +4233,7 @@
         if (!pool.includes(v) || used.includes(v)) return;
         selCard = v;
         Sfx.select();
+        buzz(12);
         refreshSelection();
       }
       function setFilter(f) {
@@ -3479,6 +4258,7 @@
         try {
           const j = await call("lock", { card: selCard });
           Sfx.lock();
+          buzz([20, 40, 30]);
           selCard = null;
           applyView(j.view);
         } catch (e) {
@@ -3536,6 +4316,7 @@
         animPhase = null;
         scoreHeld = false;
         stopTimer();
+        releaseAwake();
         if (had && ph !== "abandoned") call("leave").catch(() => {});
         clearSession();
         ON = null;
@@ -3610,6 +4391,8 @@
         connLost = false;
         applyView(j.view);
         startPolling();
+        armBackGuard();
+        keepAwake();
       }
       function menuErr(m) {
         const e = document.getElementById("menuErr");
@@ -3646,6 +4429,205 @@
       }
       function toggleSound() {
         setSetting("sound", !settings.sound);
+      }
+
+      /* ---------- layar penuh, layar tetap menyala, getar, tombol kembali ---------- */
+      const IS_TOUCH =
+        typeof matchMedia !== "undefined" &&
+        (matchMedia("(pointer: coarse)").matches ||
+          navigator.maxTouchPoints > 0);
+      const FS = (function () {
+        const el = document.documentElement;
+        const reqFn = el.requestFullscreen || el.webkitRequestFullscreen;
+        const exitFn = document.exitFullscreen || document.webkitExitFullscreen;
+        const isFs = () =>
+          !!(document.fullscreenElement || document.webkitFullscreenElement);
+        const standalone = () =>
+          matchMedia("(display-mode: fullscreen)").matches ||
+          matchMedia("(display-mode: standalone)").matches ||
+          navigator.standalone === true;
+        const iOS =
+          /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+          (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+        let userExited = false,
+          autoTried = false;
+        async function enter() {
+          if (!reqFn || isFs()) return;
+          try {
+            await reqFn.call(el, { navigationUI: "hide" });
+          } catch (e) {
+            try {
+              await reqFn.call(el);
+            } catch (_) {}
+          }
+        }
+        async function leave() {
+          userExited = true;
+          try {
+            if (isFs() && exitFn) await exitFn.call(document);
+          } catch (e) {}
+        }
+        function toggle() {
+          if (isFs()) leave();
+          else {
+            userExited = false;
+            enter();
+          }
+        }
+        function onChange() {
+          if (!isFs()) userExited = true; // pemain keluar sendiri → jangan paksa lagi
+          if (typeof renderChrome === "function") renderChrome();
+        }
+        document.addEventListener("fullscreenchange", onChange);
+        document.addEventListener("webkitfullscreenchange", onChange);
+        // Ketukan pertama pemain di HP = satu-satunya saat browser mengizinkan layar penuh.
+        function autoOnGesture() {
+          if (
+            autoTried ||
+            userExited ||
+            !IS_TOUCH ||
+            !settings.autoFullscreen ||
+            standalone() ||
+            isFs()
+          )
+            return;
+          autoTried = true;
+          enter();
+        }
+        document.addEventListener("pointerup", autoOnGesture, {
+          passive: true,
+        });
+        return {
+          supported: !!reqFn,
+          isFs,
+          standalone,
+          iOS,
+          enter,
+          toggle,
+          leave,
+        };
+      })();
+      function toggleFullscreen() {
+        FS.toggle();
+        setTimeout(renderChrome, 250);
+      }
+      function fsLabel() {
+        return FS.isFs() ? "Keluar layar penuh" : "Layar penuh";
+      }
+      function fsBtnHTML(cls) {
+        if (!FS.supported || FS.standalone()) return "";
+        return (
+          '<button class="btn ghost small fsbtn ' +
+          (cls || "") +
+          '" onclick="toggleFullscreen()" title="' +
+          fsLabel() +
+          '" aria-label="' +
+          fsLabel() +
+          '">' +
+          (FS.isFs() ? "🗗" : "⛶") +
+          "</button>"
+        );
+      }
+      // Hint iPhone: Safari iPhone tidak punya API layar penuh → pakai Tambahkan ke Layar Utama.
+      function iosHintHTML() {
+        if (!FS.iOS || FS.supported || FS.standalone()) return "";
+        return '<div class="fs-hint">📱 Untuk layar penuh di iPhone: ketuk <b>Bagikan</b> → <b>Tambah ke Layar Utama</b>, lalu buka game dari ikonnya.</div>';
+      }
+      function buzz(ms) {
+        try {
+          if (settings.haptics && navigator.vibrate) navigator.vibrate(ms);
+        } catch (e) {}
+      }
+      // Layar tidak redup selagi menunggu lawan / membaca hasil
+      let wakeLock = null;
+      async function keepAwake() {
+        try {
+          if (!ON || !navigator.wakeLock || wakeLock || document.hidden) return;
+          wakeLock = await navigator.wakeLock.request("screen");
+          wakeLock.addEventListener("release", () => {
+            wakeLock = null;
+          });
+        } catch (e) {
+          wakeLock = null;
+        }
+      }
+      function releaseAwake() {
+        try {
+          if (wakeLock) wakeLock.release();
+        } catch (e) {}
+        wakeLock = null;
+      }
+      // Tombol kembali Android: tanya dulu, jangan langsung keluar dari pertandingan
+      let backGuard = false;
+      function armBackGuard() {
+        if (backGuard || !ON) return;
+        backGuard = true;
+        try {
+          history.pushState({ wok: 1 }, "");
+        } catch (e) {}
+      }
+      window.addEventListener("popstate", () => {
+        if (!backGuard) return;
+        if (!ON) {
+          backGuard = false;
+          return;
+        }
+        try {
+          history.pushState({ wok: 1 }, "");
+        } catch (e) {}
+        if (document.querySelector(".modal-bg")) closeModal();
+        else leaveRoom();
+      });
+      // ukuran header → posisi timer menempel
+      function renderChrome() {
+        const h = document.querySelector(".top");
+        document.documentElement.style.setProperty(
+          "--hh",
+          (h ? h.offsetHeight : 0) + "px"
+        );
+        document.querySelectorAll(".fsbtn").forEach((b) => {
+          b.textContent = FS.isFs() ? "🗗" : "⛶";
+          b.title = fsLabel();
+        });
+      }
+      window.addEventListener("resize", renderChrome);
+      window.addEventListener("orientationchange", () =>
+        setTimeout(renderChrome, 200)
+      );
+      function showMenu() {
+        const sheetBtn = (ic, label, sub, fn) =>
+          '<button class="btn ghost" onclick="closeModal();' +
+          fn +
+          '"><span class="ic">' +
+          ic +
+          "</span><span>" +
+          label +
+          (sub ? "<small>" + sub + "</small>" : "") +
+          "</span></button>";
+        showModal(
+          "<h2>Menu</h2>" +
+            '<div class="sheet-list">' +
+            (FS.supported && !FS.standalone()
+              ? sheetBtn(
+                  FS.isFs() ? "🗗" : "⛶",
+                  fsLabel(),
+                  "Sembunyikan bilah alamat & navigasi",
+                  "toggleFullscreen()"
+                )
+              : "") +
+            sheetBtn(
+              settings.sound ? "🔊" : "🔇",
+              settings.sound ? "Matikan suara" : "Nyalakan suara",
+              "",
+              "toggleSound()"
+            ) +
+            sheetBtn("📜", "Riwayat pertempuran", "", "showHistory()") +
+            sheetBtn("❓", "Cara bermain", "", "showHowTo()") +
+            sheetBtn("⚙", "Pengaturan", "", "showSettings()") +
+            sheetBtn("🚪", "Keluar dari permainan", "", "leaveRoom()") +
+            "</div>" +
+            iosHintHTML()
+        );
       }
 
       /* ---------- reveal tersinkron: kedua pemain memutar animasi dari hasil yang SAMA dari server ---------- */
@@ -3707,6 +4689,7 @@
         if (ph === "select" || ph === "waiting" || ph === "result")
           window.scrollTo(0, wTop);
         syncAtmosphere();
+        renderChrome();
       }
       function collectionInner(st) {
         const t = ON.side === "pos" ? 1 : 2;
@@ -3958,16 +4941,29 @@
           '</div><div class="bar"><i style="width:' +
           prog +
           '%"></i></div><div class="status">' +
-          (isMaster() && ph === "waiting" ? "Pemain sedang memilih" : STATUS[ph] || "") +
+          (isMaster() && ph === "waiting"
+            ? "Pemain sedang memilih"
+            : STATUS[ph] || "") +
           "</div></div>" +
           '<div class="tools">' +
-          (isMaster() ? '<span class="roomchip" style="cursor:default">👁 Room Master</span>' : V.hasMaster ? '<span class="roomchip" style="cursor:default" title="Room Master menonton">👁 ' + esc(V.masterName || "") + (V.online.master ? "" : " (terputus)") + "</span>" : "") +
-          '<span class="roomchip" onclick="copyText(\'code\')" title="Salin kode ruangan">Ruangan <b>' +
+          (isMaster()
+            ? '<span class="roomchip hide-m" style="cursor:default">👁 Room Master</span>'
+            : V.hasMaster
+            ? '<span class="roomchip hide-m" style="cursor:default" title="Room Master menonton">👁 ' +
+              esc(V.masterName || "") +
+              (V.online.master ? "" : " (terputus)") +
+              "</span>"
+            : "") +
+          '<span class="roomchip" onclick="copyText(\'code\')" title="Salin kode ruangan"><span class="hide-m">Ruangan </span><b>' +
           esc(V.code) +
           "</b></span>" +
-          '<button class="btn ghost small" onclick="toggleSound()" title="Suara">' +
+          fsBtnHTML() +
+          '<button class="btn ghost small hide-m" onclick="toggleSound()" title="Suara">' +
           (settings.sound ? "🔊" : "🔇") +
-          '</button><button class="btn ghost small" onclick="showHistory()">📜 Riwayat</button><button class="btn ghost small" onclick="showHowTo()">❓ Cara Main</button><button class="btn ghost small" onclick="showSettings()">⚙</button><button class="btn ghost small" onclick="leaveRoom()">🚪 Keluar</button></div></header>';
+          '</button><button class="btn ghost small hide-m" onclick="showHistory()">📜 Riwayat</button><button class="btn ghost small hide-m" onclick="showHowTo()">❓ Cara Main</button><button class="btn ghost small hide-m" onclick="showSettings()">⚙</button><button class="btn ghost small hide-m" onclick="leaveRoom()">🚪 Keluar</button>' +
+          '<button class="btn ghost small only-m" onclick="showMenu()" aria-label="Menu">☰</button></div>' +
+          mscoreHTML(st) +
+          "</header>";
         h +=
           '<div class="layout">' +
           panelHTML(st, "pos") +
@@ -3986,7 +4982,7 @@
           h +=
             '<div class="netbar">🔴 ' +
             esc(oppName()) +
-            " terputus. Menunggu dia kembali…</div>";;
+            " terputus. Menunggu dia kembali…</div>";
         h += selMode
           ? buffBarHTML(st)
           : st.currentBuff && ph === "countdown"
@@ -4049,7 +5045,7 @@
           } catch (e) {}
         }
         const num = (k, lo, hi, w) =>
-          '<input type="number" min="' +
+          '<input type="number" inputmode="numeric" min="' +
           lo +
           '" max="' +
           hi +
@@ -4066,12 +5062,16 @@
           "</span></div>" +
           '<h1 class="game-title"><span class="t-pos">POSITIVE</span><span class="vs">vs</span><span class="t-neg">NEGATIVE</span></h1><div class="subtitle">WAR OF KINGDOMS · ONLINE</div>' +
           '<p class="tag">Perang strategi matematika dan psikologis untuk <b>dua pemain manusia secara online</b>. Pilih kartu secara rahasia di perangkatmu sendiri, baca lawanmu, dan rebut pasukan sisa dalam 30 ronde.</p>' +
-          '<div class="namebar" id="names"><label class="l1" for="n1" style="color:var(--gold);font-size:.78rem;letter-spacing:.1em;text-transform:uppercase;display:block;margin-bottom:6px">Namamu</label><input id="n1" maxlength="16" placeholder="Nama / nickname" value="' +
+          '<div class="namebar" id="names"><label class="l1" for="n1" style="color:var(--gold);font-size:.78rem;letter-spacing:.1em;text-transform:uppercase;display:block;margin-bottom:6px">Namamu</label><input id="n1" maxlength="16" placeholder="Nama / nickname" autocomplete="off" autocorrect="off" enterkeyhint="done" value="' +
           esc(menuForm.name) +
           '" oninput="menuForm.name=this.value" style="width:100%;padding:.8em 1em;border-radius:11px;background:rgba(0,0,0,.4);color:#fff;border:1px solid var(--line);outline:none"></div>' +
           '<div class="err" id="menuErr"></div>' +
           '<div class="mode-grid"><div class="mode"><h3>⚔ Buat Ruangan</h3>' +
-          '<label>Peranmu</label><select id="roleSel" onchange="menuForm.role=this.value;renderGame()" style="width:100%;padding:.6em;border-radius:10px;background:rgba(0,0,0,.4);color:#fff;border:1px solid var(--line);margin-bottom:8px"><option value="player"' + (menuForm.role !== "master" ? " selected" : "") + '>Pemain 1 (Kerajaan Positif)</option><option value="master"' + (menuForm.role === "master" ? " selected" : "") + '>Room Master (hanya menonton)</option></select>' +
+          '<label>Peranmu</label><select id="roleSel" onchange="menuForm.role=this.value;renderGame()" style="width:100%;padding:.6em;border-radius:10px;background:rgba(0,0,0,.4);color:#fff;border:1px solid var(--line);margin-bottom:8px"><option value="player"' +
+          (menuForm.role !== "master" ? " selected" : "") +
+          '>Pemain 1 (Kerajaan Positif)</option><option value="master"' +
+          (menuForm.role === "master" ? " selected" : "") +
+          ">Room Master (hanya menonton)</option></select>" +
           (menuForm.role === "master"
             ? '<p style="font-size:.85rem;color:var(--mut);margin-bottom:6px">Kamu <b style="color:var(--gold)">Room Master</b>: mengatur ruangan dan menonton dua pemain bermain. Pemain yang masuk lebih dulu menjadi Kerajaan Positif, yang kedua Kerajaan Negatif.</p>'
             : '<p style="font-size:.85rem;color:var(--mut);margin-bottom:6px">Kamu memimpin <b style="color:var(--gold)">Kerajaan Positif</b> (kartu +1 s.d. +30).</p>') +
@@ -4084,22 +5084,39 @@
           "</div></div>" +
           '<p style="font-size:.72rem;color:var(--mut);margin:6px 0 10px">Timer 0 = tanpa batas. Bila habis, kartu dipilihkan otomatis.</p><button class="btn" style="width:100%" onclick="createRoom()">Buat Ruangan</button></div>' +
           '<div class="mode"><h3>🚪 Gabung Ruangan</h3><p style="font-size:.85rem;color:var(--mut);margin-bottom:6px">Masuk sebagai pemain. Di ruangan buatan pemain kamu memimpin <b style="color:#ff7f95">Kerajaan Negatif</b>; di ruangan Room Master, pemain pertama = Positif, kedua = Negatif.</p>' +
-          '<label>Kode ruangan</label><input class="codein" id="codein" maxlength="5" placeholder="ABCDE" value="' +
+          '<label>Kode ruangan</label><input class="codein" id="codein" maxlength="5" placeholder="ABCDE" autocomplete="off" autocapitalize="characters" autocorrect="off" spellcheck="false" enterkeyhint="go" value="' +
           esc(menuForm.code) +
           '" oninput="menuForm.code=this.value.toUpperCase();this.value=menuForm.code" onkeydown="if(event.key===\'Enter\')joinRoom()">' +
           '<div style="height:12px"></div><button class="btn blue" style="width:100%" onclick="joinRoom()">Gabung</button></div></div>' +
-          '<div class="menu-actions"><div class="row"><button class="btn ghost" onclick="showHowTo()">❓ Cara Bermain</button><button class="btn ghost" onclick="showSettings()">⚙ Pengaturan</button></div></div>' +
+          '<div class="menu-actions"><div class="row"><button class="btn ghost" onclick="showHowTo()">❓ Cara Bermain</button><button class="btn ghost" onclick="showSettings()">⚙ Pengaturan</button></div>' +
+          (FS.supported && !FS.standalone()
+            ? '<button class="btn ghost fsmenu" onclick="toggleFullscreen();setTimeout(renderGame,300)">' +
+              (FS.isFs() ? "🗗 Keluar Layar Penuh" : "⛶ Mainkan Layar Penuh") +
+              "</button>"
+            : "") +
+          iosHintHTML() +
+          "</div>" +
           '<p class="note"><b>Mode online:</b> server menentukan buff, undian, dan hasil. Pilihan kartumu tidak dikirim ke lawan sampai kedua pemain mengunci. Ruangan dihapus otomatis setelah 6 jam tidak aktif.</p></div></div>'
         );
       }
       function renderLobbyHTML() {
         const c = V.cfg;
         const seat = (k, lbl) =>
-          "<div>" + lbl + ": <b>" + (V.names[k] ? esc(V.names[k]) : '<span style="color:var(--mut)">menunggu…</span>') + "</b></div>";
+          "<div>" +
+          lbl +
+          ": <b>" +
+          (V.names[k]
+            ? esc(V.names[k])
+            : '<span style="color:var(--mut)">menunggu…</span>') +
+          "</b></div>";
         const seats = V.hasMaster
           ? '<div class="note" style="text-align:left;margin:8px 0">' +
-            "<div>👁 Room Master: <b>" + esc(V.masterName || "") + "</b></div>" +
-            seat("pos", "⚔ Pemain 1 · Positif") + seat("neg", "🛡 Pemain 2 · Negatif") + "</div>"
+            "<div>👁 Room Master: <b>" +
+            esc(V.masterName || "") +
+            "</b></div>" +
+            seat("pos", "⚔ Pemain 1 · Positif") +
+            seat("neg", "🛡 Pemain 2 · Negatif") +
+            "</div>"
           : "";
         return (
           '<div class="menu"><div class="menu-card"><div class="emblem"><span>' +
@@ -4113,12 +5130,15 @@
               ? "Bagikan kode ini kepada dua pemain. Permainan dimulai otomatis begitu keduanya bergabung dan kamu bisa menontonnya."
               : "Menunggu pemain lain. Permainan dimulai otomatis begitu dua pemain hadir."
             : "Bagikan kode ini kepada lawanmu. Permainan dimulai otomatis begitu dia bergabung.") +
-          "</p>" + seats +
+          "</p>" +
+          seats +
           '<div class="lobby-code">' +
           esc(V.code) +
           "</div>" +
           '<div class="menu-actions"><div class="row"><button class="btn blue" onclick="copyText(\'code\')">📋 Salin Kode</button><button class="btn ghost" onclick="copyText(\'link\')">🔗 Salin Tautan</button></div></div>' +
-          '<p class="note"><span class="pulse">●</span> Menunggu ' + (V.hasMaster ? "pemain" : "lawan") + " bergabung…</p>" +
+          '<p class="note"><span class="pulse">●</span> Menunggu ' +
+          (V.hasMaster ? "pemain" : "lawan") +
+          " bergabung…</p>" +
           '<p class="note">Aturan ruangan: peluang buff <b>' +
           c.buffChance +
           "%</b> · pasukan awal <b>" +
@@ -4126,7 +5146,9 @@
           "</b> · timer <b>" +
           (c.timer ? c.timer + " dtk" : "tanpa batas") +
           "</b></p>" +
-          '<div class="menu-actions" style="margin-top:14px"><button class="btn ghost" onclick="leaveRoom()">' + (V.hasMaster && !isMaster() ? "Keluar" : "Batalkan Ruangan") + "</button></div></div></div>"
+          '<div class="menu-actions" style="margin-top:14px"><button class="btn ghost" onclick="leaveRoom()">' +
+          (V.hasMaster && !isMaster() ? "Keluar" : "Batalkan Ruangan") +
+          "</button></div></div></div>"
         );
       }
       function renderAbandonedHTML() {
@@ -4134,7 +5156,8 @@
           V.leftBy === "master" && !isMaster()
             ? "Room Master menutup ruangan."
             : V.leftBy && V.leftBy !== ON.side
-            ? esc(isMaster() ? V.names[V.leftBy] : oppName()) + " meninggalkan permainan."
+            ? esc(isMaster() ? V.names[V.leftBy] : oppName()) +
+              " meninggalkan permainan."
             : "Ruangan ini sudah ditutup.";
         return (
           '<div class="menu"><div class="menu-card"><div class="big-ic" style="font-size:3rem">🏳️</div><h2 class="title">Permainan Berakhir</h2><p class="tag">' +
@@ -4145,7 +5168,17 @@
       }
       function rematchBtn() {
         if (isMaster())
-          return '<button class="btn big" disabled>👁 Menunggu pemain memutuskan main lagi' + (V.rematch.pos || V.rematch.neg ? " (" + (V.rematch.pos ? "✔" : "⌛") + " · " + (V.rematch.neg ? "✔" : "⌛") + ")" : "") + "</button>";
+          return (
+            '<button class="btn big" disabled>👁 Menunggu pemain memutuskan main lagi' +
+            (V.rematch.pos || V.rematch.neg
+              ? " (" +
+                (V.rematch.pos ? "✔" : "⌛") +
+                " · " +
+                (V.rematch.neg ? "✔" : "⌛") +
+                ")"
+              : "") +
+            "</button>"
+          );
         const me = V.rematch[ON.side],
           opp = V.rematch[oppSide()];
         if (V.leftBy && V.leftBy !== ON.side)
@@ -4188,6 +5221,12 @@
           '<div class="setrow"><div>Animasi penuh<small>Matikan agar hasil tampil lebih cepat</small></div><input type="checkbox" ' +
           (settings.anim ? "checked" : "") +
           " onchange=\"setSetting('anim',this.checked)\"></div>" +
+          '<div class="setrow"><div>Layar penuh otomatis<small>Di HP: ketukan pertama langsung masuk layar penuh</small></div><input type="checkbox" ' +
+          (settings.autoFullscreen ? "checked" : "") +
+          " onchange=\"setSetting('autoFullscreen',this.checked)\"></div>" +
+          '<div class="setrow"><div>Getar<small>Getaran ringan saat memilih &amp; mengunci kartu</small></div><input type="checkbox" ' +
+          (settings.haptics ? "checked" : "") +
+          " onchange=\"setSetting('haptics',this.checked)\"></div>" +
           '<div class="mrow"><button class="btn" onclick="closeModal()">Selesai</button></div>'
         );
       }
@@ -4217,7 +5256,10 @@
         document.addEventListener("pointerdown", unlock, { once: true });
         document.addEventListener("keydown", unlock, { once: true });
         document.addEventListener("visibilitychange", () => {
-          if (!document.hidden && ON) pollOnce();
+          if (!document.hidden && ON) {
+            pollOnce();
+            keepAwake();
+          }
         });
         const q = new URLSearchParams(location.search),
           roomParam = (q.get("room") || "")
@@ -4240,6 +5282,8 @@
             if (j.ok && j.view && j.view.status !== "abandoned") {
               applyView(j.view);
               startPolling();
+              armBackGuard();
+              keepAwake();
               return;
             }
           } catch (e) {
@@ -4250,6 +5294,12 @@
           V = null;
         }
         renderGame();
+      }
+      // Service worker minimal (tanpa cache) agar game bisa dipasang sebagai aplikasi layar penuh
+      if ("serviceWorker" in navigator && location.protocol !== "file:") {
+        window.addEventListener("load", () => {
+          navigator.serviceWorker.register("/sw.js").catch(() => {});
+        });
       }
       if (typeof document !== "undefined") {
         if (document.readyState === "loading")
