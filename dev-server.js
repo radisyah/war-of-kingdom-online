@@ -4,7 +4,7 @@
 const http = require('http'), fs = require('fs'), path = require('path'), url = require('url');
 const handler = require('./api/room.js');
 const PUB = path.join(__dirname, 'public');
-const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css', '.svg': 'image/svg+xml', '.json': 'application/json' };
+const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css', '.svg': 'image/svg+xml', '.json': 'application/json', '.webmanifest': 'application/manifest+json', '.png': 'image/png' };
 function start(port) {
   const srv = http.createServer((req, res) => {
     const u = url.parse(req.url, true);
